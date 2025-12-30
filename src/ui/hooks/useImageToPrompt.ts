@@ -1,0 +1,96 @@
+import { useState } from 'react';
+import type {
+  ImageToPromptRequest,
+  HistoryManager,
+  ImageToPromptRecord,
+} from 'model-config-core';
+import type { ImageService } from 'model-config-core';
+
+// 这里需要从 core 包导入服务，实际使用时需要初始化服务实例
+let imageServiceInstance: ImageService | null = null;
+let historyManagerInstance: HistoryManager | null = null;
+
+export function setImageService(service: ImageService) {
+  imageServiceInstance = service;
+}
+
+export function setHistoryManager(manager: HistoryManager) {
+  historyManagerInstance = manager;
+}
+
+export function useImageToPrompt(
+  injectedService?: ImageService,
+  injectedHistory?: HistoryManager
+) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [result, setResult] = useState<string | null>(null);
+
+  const getImageService = () => injectedService || imageServiceInstance;
+  const getHistoryManager = () => injectedHistory || historyManagerInstance;
+
+  const extract = async (
+    imageUrl: string,
+    modelKey: string,
+    templateId?: string,
+    instructions?: string,
+    metadata?: {
+      resolution?: { width: number; height: number };
+      aspectRatio?: string;
+    }
+  ): Promise<string | null> => {
+    const service = getImageService();
+    if (!service) {
+      setError(new Error('图片服务未初始化'));
+      return null;
+    }
+
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const request: ImageToPromptRequest = {
+        imageUrl,
+        modelKey,
+        templateId,
+        instructions,
+      };
+      const response = await service.imageToPrompt(request);
+      setResult(response.prompt);
+
+      // 保存历史记录
+      const historyMgr = getHistoryManager();
+      if (historyMgr) {
+        const record: ImageToPromptRecord = {
+          id: `image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          type: 'image-to-prompt',
+          imageUrl: imageUrl,
+          prompt: response.prompt,
+          modelKey,
+          instructions,
+          timestamp: Date.now(),
+          resolution: metadata?.resolution,
+          aspectRatio: metadata?.aspectRatio,
+        };
+        await historyMgr.addRecord(record);
+      }
+
+      return response.prompt;
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    extract,
+    loading,
+    error,
+    result,
+  };
+}
+
