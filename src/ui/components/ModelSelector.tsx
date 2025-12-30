@@ -487,13 +487,20 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           loadModels();
         }
       };
+
+      const handleCustomChange = () => {
+        loadModels();
+      };
+
       window.addEventListener('storage', handleStorageChange);
+      window.addEventListener('modelConfigsChanged', handleCustomChange);
 
       // 定期检查配置变化
       const interval = setInterval(loadModels, 1000);
 
       return () => {
         window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('modelConfigsChanged', handleCustomChange);
         clearInterval(interval);
       };
     }

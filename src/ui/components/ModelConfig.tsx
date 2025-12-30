@@ -107,7 +107,7 @@ export const ModelConfig: React.FC<ModelConfigProps> = ({
                 if (!oldConfig.instances && (oldConfig.apiKey || oldConfig.baseUrl || oldConfig.models)) {
                   // 转换为新格式：将旧配置转换为一个实例
                   const instanceId = generateInstanceId()
-                initialConfigs[key] = {
+                  initialConfigs[key] = {
                     provider: key,
                     instances: [{
                       id: instanceId,
@@ -156,7 +156,7 @@ export const ModelConfig: React.FC<ModelConfigProps> = ({
     if (!providerConfig || !providerConfig.instances || providerConfig.instances.length === 0) {
       return null
     }
-    
+
     // 如果有选中的实例 ID，使用它；否则使用默认实例或第一个实例
     const instanceId = selectedInstanceId || providerConfig.defaultInstanceId || providerConfig.instances[0]?.id
     return providerConfig.instances.find(inst => inst.id === instanceId) || providerConfig.instances[0] || null
@@ -203,7 +203,7 @@ export const ModelConfig: React.FC<ModelConfigProps> = ({
   // 对于自定义 baseURL（如 LMStudio），即使 provider 要求 API Key，也允许为空
   const requiresApiKey = () => {
     if (!currentInstance || !currentProvider) return false
-    const isCustomBaseURL = currentInstance.baseUrl && 
+    const isCustomBaseURL = currentInstance.baseUrl &&
       currentInstance.baseUrl !== currentProvider.defaultBaseURL
     // 只有对于默认 URL 且 provider 要求 API Key 时才需要
     return currentProvider.requiresApiKey && !isCustomBaseURL
@@ -354,7 +354,7 @@ export const ModelConfig: React.FC<ModelConfigProps> = ({
             const modelDef = availableModels.find(m => m.id === modelId)
             // 直接使用从 API 返回的模型 ID，不添加任何前缀
             const trimmedModelId = typeof modelId === 'string' ? modelId.trim() : String(modelId).trim()
-            
+
             // 生成唯一 ID：provider-modelId，用于在系统中标识
             // 如果同一个 provider 有多个实例使用相同模型，通过 connectionConfig 来区分
             const hasProviderPrefix = trimmedModelId.startsWith(`${selectedProvider}-`)
@@ -406,8 +406,8 @@ export const ModelConfig: React.FC<ModelConfigProps> = ({
 
       // 更新当前实例
       const providerConfig = configs[selectedProvider] || { provider: selectedProvider, instances: [], defaultInstanceId: undefined }
-      const updatedInstances = providerConfig.instances.map(inst => 
-        inst.id === currentInstance.id 
+      const updatedInstances = providerConfig.instances.map(inst =>
+        inst.id === currentInstance.id
           ? { ...currentInstance, modelCapabilities }
           : inst
       )
@@ -435,6 +435,7 @@ export const ModelConfig: React.FC<ModelConfigProps> = ({
 
       localStorage.setItem('modelConfigs', JSON.stringify(updatedConfigs))
       setConfigs(updatedConfigs)
+      window.dispatchEvent(new Event('modelConfigsChanged'))
 
       // 清除模型列表缓存，强制重新加载
       const cacheKey = `${selectedProvider}-${currentInstance.id}-${currentInstance.apiKey || ''}-${currentInstance.baseUrl || ''}`
@@ -472,8 +473,8 @@ export const ModelConfig: React.FC<ModelConfigProps> = ({
     if (!currentInstance) return
 
     const providerConfig = configs[selectedProvider] || { provider: selectedProvider, instances: [], defaultInstanceId: undefined }
-    const updatedInstances = providerConfig.instances.map(inst => 
-      inst.id === currentInstance.id 
+    const updatedInstances = providerConfig.instances.map(inst =>
+      inst.id === currentInstance.id
         ? { ...inst, [field]: value }
         : inst
     )
@@ -505,8 +506,8 @@ export const ModelConfig: React.FC<ModelConfigProps> = ({
     }
 
     const providerConfig = configs[selectedProvider] || { provider: selectedProvider, instances: [], defaultInstanceId: undefined }
-    const updatedInstances = providerConfig.instances.map(inst => 
-      inst.id === currentInstance.id 
+    const updatedInstances = providerConfig.instances.map(inst =>
+      inst.id === currentInstance.id
         ? { ...inst, models: updatedModels, model: updatedModels.length > 0 ? updatedModels[0] : '', modelCapabilities: updatedCapabilities }
         : inst
     )
@@ -536,8 +537,8 @@ export const ModelConfig: React.FC<ModelConfigProps> = ({
     }
 
     const providerConfig = configs[selectedProvider] || { provider: selectedProvider, instances: [], defaultInstanceId: undefined }
-    const updatedInstances = providerConfig.instances.map(inst => 
-      inst.id === currentInstance.id 
+    const updatedInstances = providerConfig.instances.map(inst =>
+      inst.id === currentInstance.id
         ? { ...inst, modelCapabilities: updatedCapabilities }
         : inst
     )
@@ -587,10 +588,7 @@ export const ModelConfig: React.FC<ModelConfigProps> = ({
     const providerConfig = configs[selectedProvider]
     if (!providerConfig || !providerConfig.instances) return
 
-    if (providerConfig.instances.length <= 1) {
-      toast.error('至少需要保留一个配置实例')
-      return
-    }
+
 
     if (!confirm('确定要删除此配置实例吗？')) {
       return
@@ -599,14 +597,18 @@ export const ModelConfig: React.FC<ModelConfigProps> = ({
     const updatedInstances = providerConfig.instances.filter(inst => inst.id !== instanceId)
     const newDefaultInstanceId = updatedInstances.length > 0 ? updatedInstances[0].id : undefined
 
-    setConfigs((prev) => ({
-      ...prev,
+    const updatedConfigs = {
+      ...configs,
       [selectedProvider]: {
         ...providerConfig,
         instances: updatedInstances,
         defaultInstanceId: newDefaultInstanceId,
       },
-    }))
+    }
+
+    setConfigs(updatedConfigs)
+    localStorage.setItem('modelConfigs', JSON.stringify(updatedConfigs))
+    window.dispatchEvent(new Event('modelConfigsChanged'))
 
     if (selectedInstanceId === instanceId) {
       setSelectedInstanceId(newDefaultInstanceId || '')
@@ -762,11 +764,10 @@ export const ModelConfig: React.FC<ModelConfigProps> = ({
                 {instances.map((instance) => (
                   <div
                     key={instance.id}
-                    className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                      selectedInstanceId === instance.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
+                    className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${selectedInstanceId === instance.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
                   >
                     <button
                       onClick={() => handleSwitchInstance(instance.id)}
@@ -827,197 +828,197 @@ export const ModelConfig: React.FC<ModelConfigProps> = ({
           </div>
 
           {currentInstance ? (
-          <div className="space-y-6">
-            {/* API Key */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Key className="w-4 h-4 inline mr-1" />
-                API Key
-                {requiresApiKey() && <span className="text-red-500 ml-1">*</span>}
-                {!requiresApiKey() && <span className="text-gray-400 ml-1 text-xs">(可选)</span>}
-                {currentInstance.apiKey && (
-                  <span className="ml-2 text-xs text-green-600">✓ 已配置</span>
-                )}
-              </label>
-              <div className="relative">
-                <input
-                  type={showApiKeys[selectedProvider] ? 'text' : 'password'}
-                  value={currentInstance.apiKey || ''}
-                  onChange={(e) => handleConfigChange('apiKey', e.target.value)}
-                  placeholder={requiresApiKey() ? `请输入 ${currentProvider?.name || '提供商'} API Key` : 'API Key（可选，LMStudio 等本地服务可留空）'}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10 placeholder-gray-400"
-                />
-                {requiresApiKey() && (
-                  <button
-                    type="button"
-                    onClick={() => toggleApiKeyVisibility(selectedProvider)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    title={showApiKeys[selectedProvider] ? '隐藏 API Key' : '显示 API Key'}
-                  >
-                    {showApiKeys[selectedProvider] ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {selectedProvider === 'ollama'
-                  ? 'Ollama 是本地服务，不需要 API Key。确保 Ollama 服务正在运行（默认地址：http://127.0.0.1:11434）'
-                  : requiresApiKey()
-                    ? '请前往对应提供商的官网获取 API Key'
-                    : '对于自定义 Base URL（如 LMStudio），API Key 可以留空'}
-              </p>
-            </div>
-
-            {/* Base URL (可选) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Base URL (可选)
-              </label>
-              <input
-                type="text"
-                value={currentInstance.baseUrl || ''}
-                onChange={(e) => handleConfigChange('baseUrl', e.target.value)}
-                placeholder={currentProvider?.defaultBaseURL || ''}
-                className="w-full px-4 py-2.5 bg-white border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                默认值已自动填充，通常无需修改。可以配置不同的 Base URL 来连接多个服务实例（如多个 LMStudio）
-              </p>
-            </div>
-
-            {/* 模型选择 - 多选 */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  <Brain className="w-4 h-4 inline mr-1" />
-                  选择模型（可多选）
-                  {currentInstance.models && currentInstance.models.length > 0 && (
-                    <span className="ml-2 text-xs text-green-600">
-                      ✓ 已选择 {currentInstance.models.length} 个
-                    </span>
+            <div className="space-y-6">
+              {/* API Key */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Key className="w-4 h-4 inline mr-1" />
+                  API Key
+                  {requiresApiKey() && <span className="text-red-500 ml-1">*</span>}
+                  {!requiresApiKey() && <span className="text-gray-400 ml-1 text-xs">(可选)</span>}
+                  {currentInstance.apiKey && (
+                    <span className="ml-2 text-xs text-green-600">✓ 已配置</span>
                   )}
                 </label>
-                <button
-                  onClick={loadModels}
-                  disabled={loadingModels || (requiresApiKey() && !currentInstance.apiKey?.trim())}
-                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed px-2 py-1 rounded hover:bg-blue-50 transition-colors"
-                  title={requiresApiKey() && !currentInstance.apiKey?.trim() ? '请先输入 API Key' : '刷新模型列表'}
-                >
-                  <RefreshCw className={`w-3 h-3 ${loadingModels ? 'animate-spin' : ''}`} />
-                  {loadingModels ? '加载中...' : '刷新列表'}
-                </button>
+                <div className="relative">
+                  <input
+                    type={showApiKeys[selectedProvider] ? 'text' : 'password'}
+                    value={currentInstance.apiKey || ''}
+                    onChange={(e) => handleConfigChange('apiKey', e.target.value)}
+                    placeholder={requiresApiKey() ? `请输入 ${currentProvider?.name || '提供商'} API Key` : 'API Key（可选，LMStudio 等本地服务可留空）'}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10 placeholder-gray-400"
+                  />
+                  {requiresApiKey() && (
+                    <button
+                      type="button"
+                      onClick={() => toggleApiKeyVisibility(selectedProvider)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      title={showApiKeys[selectedProvider] ? '隐藏 API Key' : '显示 API Key'}
+                    >
+                      {showApiKeys[selectedProvider] ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {selectedProvider === 'ollama'
+                    ? 'Ollama 是本地服务，不需要 API Key。确保 Ollama 服务正在运行（默认地址：http://127.0.0.1:11434）'
+                    : requiresApiKey()
+                      ? '请前往对应提供商的官网获取 API Key'
+                      : '对于自定义 Base URL（如 LMStudio），API Key 可以留空'}
+                </p>
               </div>
 
-              {loadingModels ? (
-                <div className="flex items-center justify-center py-4 border border-gray-300 rounded-lg bg-gray-50">
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-                  <span className="ml-2 text-sm text-gray-600">正在加载模型列表...</span>
-                </div>
-              ) : availableModels.length > 0 ? (
-                <div className="border border-gray-300 rounded-lg p-4 max-h-60 overflow-y-auto bg-gray-50">
-                  <div className="space-y-2">
-                    {availableModels.map((model) => {
-                      const isSelected = (currentInstance.models || []).includes(model.id)
-                      const supportsVision = currentInstance.modelCapabilities?.[model.id]?.supportsVision || false
-                      return (
-                        <div
-                          key={model.id}
-                          className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${isSelected
-                            ? 'bg-blue-50 border border-blue-200'
-                            : 'hover:bg-gray-100 border border-transparent'
-                            }`}
-                        >
-                          <label className="flex items-center gap-3 flex-1 cursor-pointer" onClick={(e) => {
-                            e.preventDefault()
-                            handleModelToggle(model.id)
-                          }}>
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={(e) => {
-                                e.stopPropagation()
-                                handleModelToggle(model.id)
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <div className="text-sm font-medium text-gray-900">{model.name}</div>
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded text-xs border border-gray-200">
-                                  <FileText className="w-3 h-3" />
-                                  文本
-                                </span>
-                                {supportsVision && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs border border-blue-200">
-                                    <ImageIcon className="w-3 h-3" />
-                                    视觉
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-xs text-gray-500">{model.provider}</div>
-                            </div>
-                          </label>
-                          {isSelected && (
-                            <div className="flex items-center gap-2 shrink-0">
-                              <label className="flex items-center gap-1 cursor-pointer" onClick={(e) => handleVisionToggle(model.id, e)}>
-                                <input
-                                  type="checkbox"
-                                  checked={supportsVision}
-                                  onChange={(e) => {
-                                    e.stopPropagation()
-                                    handleVisionToggle(model.id, e)
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                                />
-                                <span className="text-xs text-gray-600 whitespace-nowrap">支持视觉</span>
-                              </label>
-                              <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ) : currentInstance.apiKey || !requiresApiKey() ? (
-                <div className="px-4 py-2.5 border border-yellow-300 bg-yellow-50 rounded-lg text-sm text-yellow-800">
-                  点击"测试连接"或"刷新列表"来加载模型列表
-                </div>
-              ) : (
-                <div className="px-4 py-2.5 border border-gray-300 bg-gray-50 rounded-lg text-sm text-gray-600">
-                  请输入 API Key 后自动加载模型列表
-                </div>
-              )}
-              <p className="text-xs text-gray-500 mt-1">
-                可以多选模型，然后在首页查看任务时使用已配置的模型
-              </p>
-            </div>
+              {/* Base URL (可选) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Base URL (可选)
+                </label>
+                <input
+                  type="text"
+                  value={currentInstance.baseUrl || ''}
+                  onChange={(e) => handleConfigChange('baseUrl', e.target.value)}
+                  placeholder={currentProvider?.defaultBaseURL || ''}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-300 text-gray-900 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  默认值已自动填充，通常无需修改。可以配置不同的 Base URL 来连接多个服务实例（如多个 LMStudio）
+                </p>
+              </div>
 
-            {/* 操作按钮 */}
-            <div className="flex gap-3 pt-4 border-t border-gray-200">
-              <button
-                onClick={testConnection}
-                disabled={requiresApiKey() && !currentInstance.apiKey?.trim()}
-                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                测试连接
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !currentInstance.models || currentInstance.models.length === 0}
-                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save className="w-4 h-4" />
-                {saving ? '保存中...' : '保存配置'}
-              </button>
+              {/* 模型选择 - 多选 */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    <Brain className="w-4 h-4 inline mr-1" />
+                    选择模型（可多选）
+                    {currentInstance.models && currentInstance.models.length > 0 && (
+                      <span className="ml-2 text-xs text-green-600">
+                        ✓ 已选择 {currentInstance.models.length} 个
+                      </span>
+                    )}
+                  </label>
+                  <button
+                    onClick={loadModels}
+                    disabled={loadingModels || (requiresApiKey() && !currentInstance.apiKey?.trim())}
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                    title={requiresApiKey() && !currentInstance.apiKey?.trim() ? '请先输入 API Key' : '刷新模型列表'}
+                  >
+                    <RefreshCw className={`w-3 h-3 ${loadingModels ? 'animate-spin' : ''}`} />
+                    {loadingModels ? '加载中...' : '刷新列表'}
+                  </button>
+                </div>
+
+                {loadingModels ? (
+                  <div className="flex items-center justify-center py-4 border border-gray-300 rounded-lg bg-gray-50">
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                    <span className="ml-2 text-sm text-gray-600">正在加载模型列表...</span>
+                  </div>
+                ) : availableModels.length > 0 ? (
+                  <div className="border border-gray-300 rounded-lg p-4 max-h-60 overflow-y-auto bg-gray-50">
+                    <div className="space-y-2">
+                      {availableModels.map((model) => {
+                        const isSelected = (currentInstance.models || []).includes(model.id)
+                        const supportsVision = currentInstance.modelCapabilities?.[model.id]?.supportsVision || false
+                        return (
+                          <div
+                            key={model.id}
+                            className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${isSelected
+                              ? 'bg-blue-50 border border-blue-200'
+                              : 'hover:bg-gray-100 border border-transparent'
+                              }`}
+                          >
+                            <label className="flex items-center gap-3 flex-1 cursor-pointer" onClick={(e) => {
+                              e.preventDefault()
+                              handleModelToggle(model.id)
+                            }}>
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  e.stopPropagation()
+                                  handleModelToggle(model.id)
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <div className="text-sm font-medium text-gray-900">{model.name}</div>
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded text-xs border border-gray-200">
+                                    <FileText className="w-3 h-3" />
+                                    文本
+                                  </span>
+                                  {supportsVision && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs border border-blue-200">
+                                      <ImageIcon className="w-3 h-3" />
+                                      视觉
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-500">{model.provider}</div>
+                              </div>
+                            </label>
+                            {isSelected && (
+                              <div className="flex items-center gap-2 shrink-0">
+                                <label className="flex items-center gap-1 cursor-pointer" onClick={(e) => handleVisionToggle(model.id, e)}>
+                                  <input
+                                    type="checkbox"
+                                    checked={supportsVision}
+                                    onChange={(e) => {
+                                      e.stopPropagation()
+                                      handleVisionToggle(model.id, e)
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                  />
+                                  <span className="text-xs text-gray-600 whitespace-nowrap">支持视觉</span>
+                                </label>
+                                <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : currentInstance.apiKey || !requiresApiKey() ? (
+                  <div className="px-4 py-2.5 border border-yellow-300 bg-yellow-50 rounded-lg text-sm text-yellow-800">
+                    点击"测试连接"或"刷新列表"来加载模型列表
+                  </div>
+                ) : (
+                  <div className="px-4 py-2.5 border border-gray-300 bg-gray-50 rounded-lg text-sm text-gray-600">
+                    请输入 API Key 后自动加载模型列表
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  可以多选模型，然后在首页查看任务时使用已配置的模型
+                </p>
+              </div>
+
+              {/* 操作按钮 */}
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={testConnection}
+                  disabled={requiresApiKey() && !currentInstance.apiKey?.trim()}
+                  className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  测试连接
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !currentInstance.models || currentInstance.models.length === 0}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? '保存中...' : '保存配置'}
+                </button>
+              </div>
             </div>
-          </div>
           ) : (
             <div className="px-4 py-8 border border-dashed border-gray-300 rounded-lg bg-gray-50 text-center">
               <p className="text-sm text-gray-500">请先添加配置实例</p>
